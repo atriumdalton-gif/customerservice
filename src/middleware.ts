@@ -5,8 +5,8 @@ const COOKIE_NAME = "inbox_copilot_auth";
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  // Allow health check without auth
-  if (pathname === "/api/health") {
+  // Allow health check and webhooks without cookie auth
+  if (pathname === "/api/health" || pathname.startsWith("/api/webhook/")) {
     return NextResponse.next();
   }
 

@@ -3,28 +3,28 @@ import type { EnrichedEmail } from "@/types/email";
 import InboxEmptyState from "./InboxEmptyState";
 
 const TABS = [
-  { key: "pending", label: "Pending" },
-  { key: "sent", label: "Sent" },
   { key: "all", label: "All" },
+  { key: "pending", label: "Open" },
   { key: "urgent", label: "Urgent" },
-  { key: "auto-resolved", label: "Auto-Resolved" },
-  { key: "needs-review", label: "Needs Review" },
+  { key: "needs-review", label: "Review" },
+  { key: "sent", label: "Sent" },
+  { key: "auto-resolved", label: "Resolved" },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];
 
-const PRIORITY_STYLES: Record<string, string> = {
-  urgent: "bg-red-500/10 text-red-600",
-  high: "bg-amber-500/10 text-amber-600",
-  normal: "bg-blue-500/10 text-blue-600",
-  low: "bg-slate-500/10 text-slate-500",
+const PRIORITY_CONFIG: Record<string, { bg: string; text: string; dot: string }> = {
+  urgent: { bg: "rgba(255,77,106,0.12)", text: "#ff4d6a", dot: "#ff4d6a" },
+  high: { bg: "rgba(255,179,71,0.12)", text: "#ffb347", dot: "#ffb347" },
+  normal: { bg: "rgba(79,143,255,0.12)", text: "#4f8fff", dot: "#4f8fff" },
+  low: { bg: "rgba(90,90,114,0.12)", text: "#5a5a72", dot: "#5a5a72" },
 };
 
-const SENTIMENT_COLORS: Record<string, string> = {
-  positive: "bg-emerald-500",
-  neutral: "bg-slate-400",
-  negative: "bg-amber-500",
-  frustrated: "bg-red-500",
+const SENTIMENT_CONFIG: Record<string, { color: string; label: string }> = {
+  positive: { color: "#34d399", label: "Happy" },
+  neutral: { color: "#8b8b9e", label: "Neutral" },
+  negative: { color: "#ffb347", label: "Unhappy" },
+  frustrated: { color: "#ff4d6a", label: "Frustrated" },
 };
 
 const CHANNEL_ICONS: Record<string, string> = {
@@ -52,6 +52,17 @@ function filterEmails(emails: EnrichedEmail[], tab: TabKey): EnrichedEmail[] {
   }
 }
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
 interface TicketListProps {
   emails: EnrichedEmail[];
   selectedId: string | null;
@@ -70,111 +81,175 @@ export default function TicketList({
   const filtered = filterEmails(emails, tab);
 
   return (
-    <div className="flex w-80 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--card)]">
-      {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto border-b border-[var(--border)] px-3 py-2">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => onTabChange(t.key)}
-            className={clsx(
-              "whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-              tab === t.key
-                ? "bg-[var(--accent-light)] text-[var(--accent)]"
-                : "text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5"
-            )}
-          >
-            {t.label}
+    <div
+      className="flex shrink-0 flex-col"
+      style={{
+        width: "var(--ticket-list-width)",
+        background: "var(--card)",
+        borderRight: "1px solid var(--border)",
+      }}
+    >
+      {/* Header */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[15px] font-bold text-[var(--foreground)]">
+            Conversations
+            <span className="ml-2 text-[12px] font-medium text-[var(--foreground-muted)]">
+              {filtered.length}
+            </span>
+          </h2>
+          <button className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-white/[0.06]">
+            <svg className="h-4 w-4 text-[var(--foreground-muted)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+            </svg>
           </button>
-        ))}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-0.5 overflow-x-auto rounded-lg p-0.5" style={{ background: "rgba(255,255,255,0.03)" }}>
+          {TABS.map((t) => {
+            const count = filterEmails(emails, t.key).length;
+            return (
+              <button
+                key={t.key}
+                onClick={() => onTabChange(t.key)}
+                className={clsx(
+                  "flex items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-all duration-200",
+                  tab === t.key
+                    ? "bg-white/[0.08] text-white shadow-sm"
+                    : "text-[var(--foreground-muted)] hover:text-white"
+                )}
+              >
+                {t.label}
+                {count > 0 && (
+                  <span className={clsx(
+                    "ml-0.5 text-[10px]",
+                    tab === t.key ? "text-[var(--accent)]" : "text-[var(--foreground-muted)] opacity-60"
+                  )}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* List */}
       {filtered.length === 0 ? (
         <InboxEmptyState tab={tab} />
       ) : (
-        <div className="flex-1 overflow-y-auto">
-          {filtered.map((email) => {
+        <div className="flex-1 overflow-y-auto pt-1">
+          {filtered.map((email, i) => {
             const selected = email.id === selectedId;
             const slaBreached = email.slaMinutesRemaining < 0;
             const snippet =
-              email.bodyPlain.length > 80
-                ? email.bodyPlain.slice(0, 80) + "..."
+              email.bodyPlain.length > 70
+                ? email.bodyPlain.slice(0, 70) + "..."
                 : email.bodyPlain;
             const channelPath = CHANNEL_ICONS[email.channel] || CHANNEL_ICONS.email;
+            const priority = PRIORITY_CONFIG[email.priority] || PRIORITY_CONFIG.normal;
+            const sentiment = SENTIMENT_CONFIG[email.sentiment] || SENTIMENT_CONFIG.neutral;
 
             return (
               <button
                 key={email.id}
                 onClick={() => onSelect(email.id)}
                 className={clsx(
-                  "flex w-full gap-3 border-b border-[var(--border)]/50 p-3.5 text-left transition-colors",
+                  "group relative flex w-full gap-3 px-4 py-3 text-left transition-all duration-150 animate-fade-in",
                   selected
-                    ? "border-l-[3px] border-l-[var(--accent)] bg-[var(--accent-light)]"
-                    : "hover:bg-[var(--card-hover)]"
+                    ? "bg-[var(--accent-muted)]"
+                    : "hover:bg-white/[0.02]",
                 )}
+                style={{ animationDelay: `${i * 30}ms` }}
               >
+                {/* Selection indicator */}
+                {selected && (
+                  <div
+                    className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full"
+                    style={{ background: "var(--accent-gradient)" }}
+                  />
+                )}
+
                 {/* Avatar */}
-                <div
-                  className={clsx(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
-                    email.customerProfile.avatarColor
-                  )}
-                >
-                  {email.customerProfile.avatarInitials}
+                <div className="relative shrink-0">
+                  <div
+                    className={clsx(
+                      "flex h-10 w-10 items-center justify-center rounded-full text-[11px] font-bold text-white ring-2 ring-transparent transition-all",
+                      email.customerProfile.avatarColor,
+                      selected && "ring-[var(--accent)]/30"
+                    )}
+                  >
+                    {email.customerProfile.avatarInitials}
+                  </div>
+                  {/* Sentiment dot */}
+                  <div
+                    className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2"
+                    style={{
+                      background: sentiment.color,
+                      boxShadow: `0 0 0 2px var(--card)`,
+                    }}
+                  />
                 </div>
 
                 {/* Content */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-[13px] font-semibold text-[var(--foreground)]">
                       {email.customerProfile.name}
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <svg className="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d={channelPath} />
-                      </svg>
-                      <span className={clsx("h-2 w-2 rounded-full", SENTIMENT_COLORS[email.sentiment])} />
-                    </div>
+                    <span className="shrink-0 text-[11px] text-[var(--foreground-muted)]">
+                      {timeAgo(email.receivedAt)}
+                    </span>
                   </div>
 
-                  <p className="truncate text-[13px] font-medium text-slate-700 dark:text-slate-300">
+                  <p className="truncate text-[12px] font-medium text-[var(--foreground)] opacity-70 mt-0.5">
                     {email.subject || "(no subject)"}
                   </p>
-                  <p className="mt-0.5 line-clamp-2 text-xs text-slate-400">
+
+                  <p className="mt-0.5 line-clamp-1 text-[11px] text-[var(--foreground-muted)]">
                     {snippet}
                   </p>
 
-                  {/* Footer: priority + SLA */}
-                  <div className="mt-2 flex items-center gap-2">
+                  {/* Meta row */}
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    {/* Priority badge */}
                     <span
-                      className={clsx(
-                        "rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize",
-                        PRIORITY_STYLES[email.priority]
-                      )}
+                      className="rounded-[4px] px-1.5 py-[1px] text-[10px] font-bold uppercase tracking-wide"
+                      style={{ background: priority.bg, color: priority.text }}
                     >
                       {email.priority}
                     </span>
 
-                    {email.status === "pending" ? (
+                    {/* Channel icon */}
+                    <svg className="h-3 w-3 text-[var(--foreground-muted)] opacity-50" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={channelPath} />
+                    </svg>
+
+                    {/* SLA */}
+                    {email.status === "pending" && (
                       <span
                         className={clsx(
-                          "flex items-center gap-1 text-[11px]",
-                          slaBreached ? "font-semibold text-red-500" : "text-slate-400"
+                          "flex items-center gap-0.5 text-[10px] font-medium",
+                          slaBreached ? "text-[var(--danger)]" : "text-[var(--foreground-muted)] opacity-60"
                         )}
                       >
-                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         {slaBreached
-                          ? `${Math.abs(email.slaMinutesRemaining)}m overdue`
-                          : `${email.slaMinutesRemaining}m left`}
-                      </span>
-                    ) : (
-                      <span className="text-[11px] capitalize text-slate-400">
-                        {email.status}
+                          ? `${Math.abs(email.slaMinutesRemaining)}m over`
+                          : `${email.slaMinutesRemaining}m`}
                       </span>
                     )}
+
+                    {/* AI confidence */}
+                    <span className="ml-auto flex items-center gap-0.5 text-[10px] font-medium text-[var(--accent)] opacity-70">
+                      <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                      </svg>
+                      {email.aiInsight.confidence}%
+                    </span>
                   </div>
                 </div>
               </button>

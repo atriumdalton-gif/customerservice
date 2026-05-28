@@ -7,16 +7,34 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model Connection {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  apiKey      String    @unique
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  lastEventAt DateTime?
+  emails      Email[]
+}
+
 model Email {
-  id          String   @id @default(uuid())
-  fromAddress String
-  fromName    String?
-  subject     String?
-  bodyPlain   String
-  receivedAt  DateTime
-  status      String   @default("pending") // pending | sent | rejected
-  createdAt   DateTime @default(now())
-  drafts      Draft[]
+  id           String      @id @default(uuid())
+  fromAddress  String
+  fromName     String?
+  subject      String?
+  bodyPlain    String
+  receivedAt   DateTime
+  status       String      @default("pending") // pending | sent | rejected
+  createdAt    DateTime    @default(now())
+  connectionId String?
+  connection   Connection? @relation(fields: [connectionId], references: [id])
+  source       String?
+  priority     String?
+  sentiment    String?
+  tags         String[]    @default([])
+  channel      String      @default("email")
+  drafts       Draft[]
 }
 
 model Draft {

@@ -22,6 +22,12 @@ export interface Email {
   status: string;
   createdAt: string;
   drafts: Draft[];
+  connectionId?: string | null;
+  source?: string | null;
+  priority?: string | null;
+  sentiment?: string | null;
+  tags?: string[];
+  channel?: string;
 }
 
 export interface CustomerProfile {
