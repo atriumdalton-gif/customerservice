@@ -1,0 +1,31 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Email {
+  id          String   @id @default(uuid())
+  fromAddress String
+  fromName    String?
+  subject     String?
+  bodyPlain   String
+  receivedAt  DateTime
+  status      String   @default("pending") // pending | sent | rejected
+  createdAt   DateTime @default(now())
+  drafts      Draft[]
+}
+
+model Draft {
+  id            String    @id @default(uuid())
+  emailId       String
+  email         Email     @relation(fields: [emailId], references: [id])
+  originalDraft String
+  finalSentText String?
+  wasEdited     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  sentAt        DateTime?
+}
