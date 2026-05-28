@@ -62,35 +62,40 @@ export default function ActionBar({
   if (!isPending) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-200 bg-white/95 px-4 pb-[env(safe-area-inset-bottom,8px)] pt-3 backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-900/95">
-      <div className="mx-auto flex max-w-lg flex-col gap-2">
-        <button
-          onClick={() => updateStatus("sent", draftText)}
-          disabled={loading !== null}
-          className="flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 text-base font-semibold text-white transition-colors hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50"
-        >
-          {loading === "sent" ? (
-            <span className="animate-pulse">Sending...</span>
-          ) : isEdited ? (
-            <>
-              <span className="mr-2">&#9998;&#65039;</span> Edit & Send
-            </>
-          ) : (
-            <>
-              <span className="mr-2">&#x1F7E2;</span> Approve & Send
-            </>
-          )}
-        </button>
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--border)] bg-[var(--card)]/95 px-4 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-lg gap-3">
         <button
           onClick={() => updateStatus("rejected")}
           disabled={loading !== null}
-          className="flex h-11 w-full items-center justify-center rounded-xl border border-red-200 bg-white text-sm font-medium text-red-600 transition-colors hover:bg-red-50 active:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-zinc-900 dark:text-red-400 dark:hover:bg-red-950"
+          className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl border border-red-200 bg-red-50 text-red-500 transition-all hover:bg-red-100 active:scale-95 disabled:opacity-50 dark:border-red-800 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
         >
           {loading === "rejected" ? (
-            <span className="animate-pulse">Rejecting...</span>
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-red-300 border-t-red-500" />
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+            </svg>
+          )}
+        </button>
+        <button
+          onClick={() => updateStatus("sent", draftText)}
+          disabled={loading !== null}
+          className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-[15px] font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-50"
+        >
+          {loading === "sent" ? (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           ) : (
             <>
-              <span className="mr-2">&#x1F534;</span> Reject
+              {isEdited ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                  <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                  <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
+                </svg>
+              )}
+              {isEdited ? "Edit & Send" : "Approve & Send"}
             </>
           )}
         </button>
