@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import DashboardShell from "@/components/shell/DashboardShell";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-[var(--background)] text-[var(--foreground)] font-[family-name:var(--font-inter)]">
-        {children}
+        <DashboardShell>{children}</DashboardShell>
       </body>
     </html>
   );

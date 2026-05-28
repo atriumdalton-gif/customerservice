@@ -8,6 +8,30 @@
   --border: #e5e5ea;
   --accent: #0071e3;
   --accent-light: #e8f2ff;
+
+  /* Sidebar */
+  --sidebar-bg: #0f0f23;
+  --sidebar-width: 220px;
+  --sidebar-collapsed-width: 64px;
+
+  /* Panel */
+  --copilot-width: 300px;
+  --ticket-list-width: 320px;
+
+  /* Purple accent */
+  --accent-purple: #7c3aed;
+
+  /* Priority */
+  --priority-urgent: #ef4444;
+  --priority-high: #f59e0b;
+  --priority-normal: #3b82f6;
+  --priority-low: #94a3b8;
+
+  /* Sentiment */
+  --sentiment-positive: #16a34a;
+  --sentiment-neutral: #94a3b8;
+  --sentiment-negative: #f59e0b;
+  --sentiment-frustrated: #ef4444;
 }
 
 @theme inline {
