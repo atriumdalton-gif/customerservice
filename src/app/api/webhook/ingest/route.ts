@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { classify } from "@/lib/classify";
+import { generateDraft } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -67,6 +68,29 @@ export async function POST(request: NextRequest) {
     where: { id: connection.id },
     data: { lastEventAt: new Date() },
   });
+
+  // Generate AI draft in background (don't block the webhook response)
+  generateDraft({
+    fromName: fromName as string | null,
+    fromAddress: fromAddress as string,
+    subject: (subject as string) || null,
+    bodyPlain: bodyPlain as string,
+    priority: classification.priority,
+    sentiment: classification.sentiment,
+    tags: classification.tags,
+  })
+    .then(async (result) => {
+      await prisma.draft.create({
+        data: {
+          emailId: email.id,
+          originalDraft: result.draft,
+        },
+      });
+      console.log(`AI draft generated for email ${email.id}`);
+    })
+    .catch((err) => {
+      console.error(`AI draft generation failed for email ${email.id}:`, err);
+    });
 
   return NextResponse.json(
     {

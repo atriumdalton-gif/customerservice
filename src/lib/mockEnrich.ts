@@ -60,17 +60,6 @@ export function deriveTags(email: Email): string[] {
   return [...new Set(tags)];
 }
 
-const COMPANIES = [
-  "Acme Corp",
-  "TechStart Inc",
-  "Globex Ltd",
-  "Initech",
-  "Umbrella Co",
-  "Wayne Enterprises",
-  "Stark Industries",
-  "Pied Piper",
-];
-const PLANS = ["Free", "Starter", "Pro", "Enterprise"];
 const AVATAR_COLORS = [
   "bg-blue-500",
   "bg-purple-500",
@@ -92,16 +81,16 @@ export function deriveCustomerProfile(email: Email): CustomerProfile {
     .toUpperCase()
     .slice(0, 2);
 
+  const domain = email.fromAddress.split("@")[1] || "";
+
   return {
     name: displayName,
     email: email.fromAddress,
     avatarInitials: initials || "??",
     avatarColor: AVATAR_COLORS[h % AVATAR_COLORS.length],
-    company: COMPANIES[h % COMPANIES.length],
-    plan: PLANS[(h >> 4) % PLANS.length],
-    lifetimeValue: `$${((h % 50) + 1) * 100}`,
-    ticketCount: (h % 12) + 1,
-    lastContactDays: h % 30,
+    ticketCount: 1,
+    firstSeen: email.receivedAt || email.createdAt,
+    source: (email as unknown as Record<string, unknown>).channel as string || domain,
   };
 }
 
@@ -128,7 +117,7 @@ export function deriveAiInsight(email: Email): AiInsight {
     suggestedAction: ACTIONS[h % ACTIONS.length],
     keyPoints: [
       `Issue relates to ${deriveTags(email)[0] || "general inquiry"}`,
-      `Customer on ${deriveCustomerProfile(email).plan} plan`,
+      `${deriveCustomerProfile(email).ticketCount} previous tickets`,
       `${deriveSentiment(email)} sentiment detected`,
     ],
     recommendedTone: TONES[h % TONES.length],

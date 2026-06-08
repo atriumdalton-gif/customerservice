@@ -24,13 +24,34 @@ export default function ConversationView({
   const draft = email.drafts?.[0];
   const [draftText, setDraftText] = useState(draft?.originalDraft || "");
   const [editing, setEditing] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [currentDraftId, setCurrentDraftId] = useState(draft?.id || "");
 
   const [prevId, setPrevId] = useState(email.id);
   if (email.id !== prevId) {
     setPrevId(email.id);
     setDraftText(draft?.originalDraft || "");
+    setCurrentDraftId(draft?.id || "");
     setEditing(false);
+    setRegenerating(false);
   }
+
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    try {
+      const res = await fetch(`/api/emails/${email.id}/regenerate`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setDraftText(data.originalDraft);
+        setCurrentDraftId(data.id);
+        setEditing(false);
+      }
+    } catch {
+      // Silent
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const wasEdited = draftText !== (draft?.originalDraft || "");
   const status = STATUS_CONFIG[email.status] || STATUS_CONFIG.pending;
@@ -225,9 +246,9 @@ export default function ConversationView({
         {/* Primary: Approve & Send */}
         <button
           onClick={() => {
-            if (draft) onApprove(email.id, draft.id, draftText, wasEdited);
+            if (currentDraftId) onApprove(email.id, currentDraftId, draftText, wasEdited);
           }}
-          disabled={!draft || email.status !== "pending"}
+          disabled={(!draft && !currentDraftId) || email.status !== "pending"}
           className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
           style={{ background: "var(--accent-gradient)" }}
         >
@@ -251,13 +272,14 @@ export default function ConversationView({
 
         {/* Regenerate */}
         <button
-          onClick={() => setDraftText(draft?.originalDraft || "")}
-          className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[var(--foreground-muted)] transition-all duration-200 hover:bg-white/[0.06] hover:text-white"
+          onClick={handleRegenerate}
+          disabled={regenerating || email.status !== "pending"}
+          className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-medium text-[var(--foreground-muted)] transition-all duration-200 hover:bg-white/[0.06] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+          <svg className={clsx("h-4 w-4", regenerating && "animate-spin")} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
           </svg>
-          Regenerate
+          {regenerating ? "Generating..." : "Regenerate"}
         </button>
 
         {/* Spacer + Reject */}

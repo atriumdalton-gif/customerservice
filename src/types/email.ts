@@ -35,11 +35,9 @@ export interface CustomerProfile {
   email: string;
   avatarInitials: string;
   avatarColor: string;
-  company: string;
-  plan: string;
-  lifetimeValue: string;
   ticketCount: number;
-  lastContactDays: number;
+  firstSeen: string;
+  source: string;
 }
 
 export interface AiInsight {

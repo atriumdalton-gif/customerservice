@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import clsx from "clsx";
 
-// ── Deterministic enrichment (matches mockEnrich logic) ──────────────
 function simpleHash(str: string): number {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -12,10 +11,7 @@ function simpleHash(str: string): number {
   return Math.abs(h);
 }
 
-const COMPANIES = ["Acme Corp", "TechStart Inc", "Globex Ltd", "Initech", "Umbrella Co", "Wayne Enterprises", "Stark Industries", "Pied Piper"];
-const PLANS = ["Free", "Starter", "Pro", "Enterprise"];
 const AVATAR_COLORS = ["bg-blue-500", "bg-purple-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-cyan-500", "bg-indigo-500", "bg-pink-500"];
-const LOCATIONS = ["San Francisco, CA", "Austin, TX", "New York, NY", "Miami, FL", "Seattle, WA", "Chicago, IL", "Denver, CO", "Portland, OR"];
 
 interface RawCustomer {
   email: string;
@@ -32,11 +28,7 @@ interface Customer extends RawCustomer {
   displayName: string;
   initials: string;
   avatarColor: string;
-  company: string;
-  plan: string;
-  ltv: string;
-  location: string;
-  satisfaction: number;
+  domain: string;
 }
 
 function enrichCustomer(c: RawCustomer): Customer {
@@ -54,15 +46,10 @@ function enrichCustomer(c: RawCustomer): Customer {
     displayName,
     initials: initials || "??",
     avatarColor: AVATAR_COLORS[h % AVATAR_COLORS.length],
-    company: COMPANIES[h % COMPANIES.length],
-    plan: PLANS[(h >> 4) % PLANS.length],
-    ltv: `$${((h % 50) + 1) * 100}`,
-    location: LOCATIONS[(h >> 2) % LOCATIONS.length],
-    satisfaction: 70 + (h % 30),
+    domain: c.email.split("@")[1] || "",
   };
 }
 
-// ── Time helpers ──────────────────────────────────────────────────────
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -76,15 +63,7 @@ function timeAgo(dateStr: string): string {
   return `${months}mo ago`;
 }
 
-// ── Plan badge colors ────────────────────────────────────────────────
-const PLAN_COLORS: Record<string, { bg: string; text: string }> = {
-  Free: { bg: "rgba(139,139,158,0.12)", text: "#8b8b9e" },
-  Starter: { bg: "rgba(79,143,255,0.12)", text: "#4f8fff" },
-  Pro: { bg: "rgba(124,92,252,0.12)", text: "#7c5cfc" },
-  Enterprise: { bg: "rgba(52,211,153,0.12)", text: "#34d399" },
-};
-
-type SortKey = "name" | "tickets" | "lastContact" | "plan" | "ltv";
+type SortKey = "name" | "tickets" | "lastContact";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -118,7 +97,7 @@ export default function CustomersPage() {
         (c) =>
           c.displayName.toLowerCase().includes(q) ||
           c.email.toLowerCase().includes(q) ||
-          c.company.toLowerCase().includes(q)
+          c.domain.toLowerCase().includes(q)
       );
     }
 
@@ -133,14 +112,6 @@ export default function CustomersPage() {
           break;
         case "lastContact":
           cmp = new Date(a.lastContact).getTime() - new Date(b.lastContact).getTime();
-          break;
-        case "plan": {
-          const order = ["Free", "Starter", "Pro", "Enterprise"];
-          cmp = order.indexOf(a.plan) - order.indexOf(b.plan);
-          break;
-        }
-        case "ltv":
-          cmp = parseInt(a.ltv.slice(1)) - parseInt(b.ltv.slice(1));
           break;
       }
       return sortAsc ? cmp : -cmp;
@@ -169,13 +140,10 @@ export default function CustomersPage() {
     );
   }
 
-  // ── Stats ────────────────────────────────────────────────────────────
   const totalCustomers = customers.length;
   const totalOpen = customers.reduce((s, c) => s + c.openTickets, 0);
-  const avgSatisfaction = totalCustomers
-    ? Math.round(customers.reduce((s, c) => s + c.satisfaction, 0) / totalCustomers)
-    : 0;
-  const totalLtv = customers.reduce((s, c) => s + parseInt(c.ltv.slice(1)), 0);
+  const totalResolved = customers.reduce((s, c) => s + c.resolvedTickets, 0);
+  const totalTickets = customers.reduce((s, c) => s + c.ticketCount, 0);
 
   if (loading) {
     return (
@@ -197,8 +165,8 @@ export default function CustomersPage() {
           {[
             { label: "Total Customers", value: String(totalCustomers), color: "var(--info)", icon: "M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" },
             { label: "Open Tickets", value: String(totalOpen), color: "var(--warning)", icon: "M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859" },
-            { label: "Avg Satisfaction", value: `${avgSatisfaction}%`, color: "var(--success)", icon: "M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" },
-            { label: "Total LTV", value: `$${totalLtv.toLocaleString()}`, color: "var(--accent)", icon: "M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { label: "Resolved", value: String(totalResolved), color: "var(--success)", icon: "M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
+            { label: "Total Tickets", value: String(totalTickets), color: "var(--accent)", icon: "M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" },
           ].map((stat) => (
             <div key={stat.label} className="glass flex-1 rounded-xl p-3.5">
               <div className="flex items-center gap-2">
@@ -243,13 +211,7 @@ export default function CustomersPage() {
                   <button onClick={() => handleSort("name")} className="hover:text-white transition-colors">Customer <SortIcon column="name" /></button>
                 </th>
                 <th className="pb-2.5 pr-4">
-                  <button onClick={() => handleSort("plan")} className="hover:text-white transition-colors">Plan <SortIcon column="plan" /></button>
-                </th>
-                <th className="pb-2.5 pr-4">
                   <button onClick={() => handleSort("tickets")} className="hover:text-white transition-colors">Tickets <SortIcon column="tickets" /></button>
-                </th>
-                <th className="pb-2.5 pr-4">
-                  <button onClick={() => handleSort("ltv")} className="hover:text-white transition-colors">LTV <SortIcon column="ltv" /></button>
                 </th>
                 <th className="pb-2.5 pr-4">
                   <button onClick={() => handleSort("lastContact")} className="hover:text-white transition-colors">Last Contact <SortIcon column="lastContact" /></button>
@@ -258,57 +220,48 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c, i) => {
-                const planColors = PLAN_COLORS[c.plan] || PLAN_COLORS.Free;
-                return (
-                  <tr
-                    key={c.email}
-                    onClick={() => setSelectedEmail(c.email === selectedEmail ? null : c.email)}
-                    className={clsx(
-                      "cursor-pointer text-[12px] transition-all duration-150 animate-fade-in",
-                      c.email === selectedEmail ? "bg-[var(--accent-muted)]" : "hover:bg-white/[0.02]"
-                    )}
-                    style={{ animationDelay: `${i * 20}ms`, borderBottom: "1px solid var(--border)" }}
-                  >
-                    <td className="py-3 pr-4">
-                      <div className="flex items-center gap-3">
-                        <div className={clsx("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white", c.avatarColor)}>
-                          {c.initials}
-                        </div>
-                        <div>
-                          <p className="text-[13px] font-semibold text-[var(--foreground)]">{c.displayName}</p>
-                          <p className="text-[11px] text-[var(--foreground-muted)]">{c.company}</p>
-                        </div>
+              {filtered.map((c, i) => (
+                <tr
+                  key={c.email}
+                  onClick={() => setSelectedEmail(c.email === selectedEmail ? null : c.email)}
+                  className={clsx(
+                    "cursor-pointer text-[12px] transition-all duration-150 animate-fade-in",
+                    c.email === selectedEmail ? "bg-[var(--accent-muted)]" : "hover:bg-white/[0.02]"
+                  )}
+                  style={{ animationDelay: `${i * 20}ms`, borderBottom: "1px solid var(--border)" }}
+                >
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-3">
+                      <div className={clsx("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white", c.avatarColor)}>
+                        {c.initials}
                       </div>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: planColors.bg, color: planColors.text }}>
-                        {c.plan}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[var(--foreground)] font-medium">{c.ticketCount}</span>
-                        {c.openTickets > 0 && (
-                          <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "rgba(255,179,71,0.12)", color: "var(--warning)" }}>
-                            {c.openTickets} open
-                          </span>
-                        )}
+                      <div>
+                        <p className="text-[13px] font-semibold text-[var(--foreground)]">{c.displayName}</p>
+                        <p className="text-[11px] text-[var(--foreground-muted)]">{c.email}</p>
                       </div>
-                    </td>
-                    <td className="py-3 pr-4 font-semibold text-[var(--foreground)]">{c.ltv}</td>
-                    <td className="py-3 pr-4 text-[var(--foreground-muted)]">{timeAgo(c.lastContact)}</td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-1.5 w-1.5 rounded-full" style={{ background: c.openTickets > 0 ? "var(--warning)" : "var(--success)" }} />
-                        <span className="text-[11px] text-[var(--foreground-muted)]">
-                          {c.openTickets > 0 ? "Active" : "Resolved"}
+                    </div>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[var(--foreground)] font-medium">{c.ticketCount}</span>
+                      {c.openTickets > 0 && (
+                        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold" style={{ background: "rgba(255,179,71,0.12)", color: "var(--warning)" }}>
+                          {c.openTickets} open
                         </span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-3 pr-4 text-[var(--foreground-muted)]">{timeAgo(c.lastContact)}</td>
+                  <td className="py-3">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1.5 w-1.5 rounded-full" style={{ background: c.openTickets > 0 ? "var(--warning)" : "var(--success)" }} />
+                      <span className="text-[11px] text-[var(--foreground-muted)]">
+                        {c.openTickets > 0 ? "Active" : "Resolved"}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
 
@@ -346,30 +299,22 @@ export default function CustomersPage() {
               </div>
               <h3 className="text-[16px] font-bold text-[var(--foreground)]">{selected.displayName}</h3>
               <p className="text-[12px] text-[var(--foreground-muted)] mt-0.5">{selected.email}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="rounded-full px-2.5 py-0.5 text-[10px] font-bold" style={{ background: (PLAN_COLORS[selected.plan] || PLAN_COLORS.Free).bg, color: (PLAN_COLORS[selected.plan] || PLAN_COLORS.Free).text }}>
-                  {selected.plan}
+              {selected.openTickets > 0 && (
+                <span className="mt-2 rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(255,179,71,0.12)", color: "var(--warning)" }}>
+                  {selected.openTickets} open tickets
                 </span>
-                {selected.openTickets > 0 && (
-                  <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: "rgba(255,179,71,0.12)", color: "var(--warning)" }}>
-                    {selected.openTickets} open
-                  </span>
-                )}
-              </div>
+              )}
             </div>
 
             {/* Details card */}
             <div className="glass rounded-xl p-3.5 space-y-2.5 mb-4">
               {[
-                { label: "Company", value: selected.company },
-                { label: "Location", value: selected.location },
-                { label: "Plan", value: selected.plan },
-                { label: "Lifetime Value", value: selected.ltv, highlight: true },
-                { label: "Total Tickets", value: String(selected.ticketCount) },
+                { label: "Email", value: selected.email },
+                { label: "Domain", value: selected.domain },
+                { label: "Total Tickets", value: String(selected.ticketCount), highlight: true },
                 { label: "Open Tickets", value: String(selected.openTickets) },
                 { label: "Resolved", value: String(selected.resolvedTickets) },
-                { label: "Satisfaction", value: `${selected.satisfaction}%` },
-                { label: "Customer Since", value: new Date(selected.firstContact).toLocaleDateString(undefined, { month: "short", year: "numeric" }) },
+                { label: "Customer Since", value: new Date(selected.firstContact).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) },
                 { label: "Last Contact", value: timeAgo(selected.lastContact) },
               ].map((row) => (
                 <div key={row.label} className="flex justify-between text-[11px]">
@@ -379,23 +324,6 @@ export default function CustomersPage() {
                   </span>
                 </div>
               ))}
-            </div>
-
-            {/* Satisfaction gauge */}
-            <div className="mb-4">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] mb-2">Satisfaction</p>
-              <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${selected.satisfaction}%`,
-                    background: selected.satisfaction >= 80 ? "var(--success)" : selected.satisfaction >= 60 ? "var(--warning)" : "var(--danger)",
-                  }}
-                />
-              </div>
-              <p className="mt-1 text-right text-[10px] font-bold" style={{ color: selected.satisfaction >= 80 ? "var(--success)" : selected.satisfaction >= 60 ? "var(--warning)" : "var(--danger)" }}>
-                {selected.satisfaction}%
-              </p>
             </div>
 
             {/* Recent tickets */}

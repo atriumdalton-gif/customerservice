@@ -182,11 +182,9 @@ export default function CopilotPanel({ email }: { email: EnrichedEmail }) {
 
           <div className="glass rounded-xl p-3 space-y-2">
             {[
-              { label: "Company", value: customerProfile.company },
-              { label: "Plan", value: customerProfile.plan, highlight: true },
-              { label: "Lifetime Value", value: customerProfile.lifetimeValue },
-              { label: "Total Tickets", value: String(customerProfile.ticketCount) },
-              { label: "Last Contact", value: `${customerProfile.lastContactDays}d ago` },
+              { label: "Total Tickets", value: String(customerProfile.ticketCount), highlight: true },
+              { label: "First Seen", value: new Date(customerProfile.firstSeen).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) },
+              { label: "Source", value: customerProfile.source },
             ].map((row) => (
               <div key={row.label} className="flex justify-between text-[11px]">
                 <span className="text-[var(--foreground-muted)]">{row.label}</span>
@@ -199,29 +197,6 @@ export default function CopilotPanel({ email }: { email: EnrichedEmail }) {
               </div>
             ))}
           </div>
-        </section>
-
-        {/* Recent Orders */}
-        <section className="animate-fade-in" style={{ animationDelay: "250ms" }}>
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] mb-2">
-            Recent Orders
-          </h3>
-          {[
-            { label: "Pro Plan Renewal", value: "$299", date: "May 15" },
-            { label: "Add-on: Analytics", value: "$49", date: "Apr 28" },
-          ].map((order) => (
-            <div
-              key={order.label}
-              className="flex items-center justify-between py-2 text-[11px]"
-              style={{ borderBottom: "1px solid var(--border)" }}
-            >
-              <div>
-                <p className="font-medium text-[var(--foreground)]">{order.label}</p>
-                <p className="text-[10px] text-[var(--foreground-muted)]">{order.date}</p>
-              </div>
-              <span className="font-bold text-[var(--success)]">{order.value}</span>
-            </div>
-          ))}
         </section>
 
         {/* Tags */}

@@ -27,6 +27,12 @@ export default function InboxLayout() {
 
         if (cancelled) return;
 
+        // Count tickets per customer for real data
+        const ticketCounts: Record<string, number> = {};
+        rawEmails.forEach((e) => {
+          ticketCounts[e.fromAddress] = (ticketCounts[e.fromAddress] || 0) + 1;
+        });
+
         const enriched = rawEmails.map((email) => {
           const base = enrichEmail(email);
           // Prefer DB-persisted classification over client-side mock
@@ -34,6 +40,8 @@ export default function InboxLayout() {
           if (email.sentiment) base.sentiment = email.sentiment as Sentiment;
           if (email.channel) base.channel = email.channel as Channel;
           if (email.tags && email.tags.length > 0) base.tags = email.tags;
+          // Real ticket count
+          base.customerProfile.ticketCount = ticketCounts[email.fromAddress] || 1;
           return base;
         });
         setEmails(enriched);
