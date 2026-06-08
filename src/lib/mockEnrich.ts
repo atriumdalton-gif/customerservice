@@ -138,18 +138,18 @@ export function enrichEmail(email: Email): EnrichedEmail {
 }
 
 export function computeStats(emails: EnrichedEmail[]): InboxStats {
-  const total = emails.length || 1;
+  const total = emails.length;
   const open = emails.filter((e) => e.status === "pending").length;
+  const sent = emails.filter((e) => e.status === "sent").length;
   const urgent = emails.filter((e) => e.priority === "urgent").length;
-
-  const avgResponse =
-    emails.reduce((sum, e) => sum + (simpleHash(e.id + "resp") % 120), 0) / total;
+  const withDrafts = emails.filter((e) => e.drafts && e.drafts.length > 0).length;
+  const aiRate = total > 0 ? Math.round((withDrafts / total) * 100) : 0;
 
   return {
     openTickets: open,
-    avgResponseMinutes: Math.round(avgResponse),
-    autoResolvedPercent: Math.round(((total - open) / total) * 40),
-    csat: 87 + (simpleHash(emails[0]?.id || "x") % 12),
+    avgResponseMinutes: 0,
+    autoResolvedPercent: aiRate,
+    csat: total > 0 ? Math.round((sent / total) * 100) : 0,
     urgentCount: urgent,
   };
 }
