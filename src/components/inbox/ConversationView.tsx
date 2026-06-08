@@ -53,6 +53,9 @@ export default function ConversationView({
     }
   };
 
+  // Keep in sync with the latest draft from props
+  const effectiveDraftId = currentDraftId || draft?.id || "";
+  const effectiveDraftText = draftText || draft?.originalDraft || "";
   const wasEdited = draftText !== (draft?.originalDraft || "");
   const status = STATUS_CONFIG[email.status] || STATUS_CONFIG.pending;
 
@@ -210,7 +213,7 @@ export default function ConversationView({
 
             {editing ? (
               <textarea
-                value={draftText}
+                value={effectiveDraftText}
                 onChange={(e) => setDraftText(e.target.value)}
                 autoFocus
                 className="w-full rounded-2xl rounded-tl-md p-4 text-[13px] leading-relaxed outline-none"
@@ -230,7 +233,7 @@ export default function ConversationView({
                 }}
               >
                 <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--foreground)] opacity-90">
-                  {draftText || "No AI draft available for this ticket."}
+                  {effectiveDraftText || "No AI draft available for this ticket."}
                 </p>
               </div>
             )}
@@ -246,9 +249,9 @@ export default function ConversationView({
         {/* Primary: Approve & Send */}
         <button
           onClick={() => {
-            if (currentDraftId) onApprove(email.id, currentDraftId, draftText, wasEdited);
+            if (effectiveDraftId) onApprove(email.id, effectiveDraftId, effectiveDraftText, wasEdited);
           }}
-          disabled={(!draft && !currentDraftId) || email.status !== "pending"}
+          disabled={!effectiveDraftId || email.status !== "pending"}
           className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
           style={{ background: "var(--accent-gradient)" }}
         >
