@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { classify } from "@/lib/classify";
 import { generateDraft } from "@/lib/ai";
+import { sendSupportReply } from "@/lib/sendEmail";
+import { AUTOPILOT_ENABLED, isSafeToAutoSend } from "@/lib/autopilot";
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -80,13 +82,80 @@ export async function POST(request: NextRequest) {
     tags: classification.tags,
   })
     .then(async (result) => {
-      await prisma.draft.create({
+      const draft = await prisma.draft.create({
         data: {
           emailId: email.id,
           originalDraft: result.draft,
         },
       });
       console.log(`AI draft generated for email ${email.id}`);
+
+      // Guarded auto-pilot. Wrapped so it can NEVER break intake.
+      try {
+        const configured = Boolean(
+          process.env.RESEND_API_KEY && process.env.SUPPORT_FROM_EMAIL
+        );
+        const safety = isSafeToAutoSend(
+          {
+            sentiment: classification.sentiment,
+            priority: classification.priority,
+            tags: classification.tags,
+          },
+          result.confidence
+        );
+
+        if (AUTOPILOT_ENABLED && configured && safety.safe) {
+          const send = await sendSupportReply({
+            to: email.fromAddress,
+            subject: email.subject,
+            body: result.draft,
+          });
+
+          if (send.ok) {
+            await prisma.email.update({
+              where: { id: email.id },
+              data: {
+                status: "sent",
+                tags: { set: [...classification.tags, "autopilot"] },
+              },
+            });
+            await prisma.draft.update({
+              where: { id: draft.id },
+              data: {
+                finalSentText: result.draft,
+                wasEdited: false,
+                sentAt: new Date(),
+              },
+            });
+            console.log(
+              `[autopilot] auto-sent ${email.id} to ${email.fromAddress} conf=${result.confidence}`
+            );
+          } else {
+            // Delivery failed — leave for a human, tag it, do not mark sent.
+            await prisma.email.update({
+              where: { id: email.id },
+              data: { tags: { set: [...classification.tags, "send-failed"] } },
+            });
+            console.error(
+              `[autopilot] send failed for ${email.id}: ${send.reason || send.error}`
+            );
+          }
+        } else {
+          // Kill switch off, not configured, or not safe → human handles it.
+          const reason = !AUTOPILOT_ENABLED
+            ? "autopilot disabled"
+            : !configured
+              ? "delivery not configured"
+              : safety.reason;
+          await prisma.email.update({
+            where: { id: email.id },
+            data: { tags: { set: [...classification.tags, "escalated"] } },
+          });
+          console.log(`[autopilot] escalated ${email.id}: ${reason}`);
+        }
+      } catch (err) {
+        console.error(`[autopilot] error for email ${email.id}:`, err);
+      }
     })
     .catch((err) => {
       console.error(`AI draft generation failed for email ${email.id}:`, err);
